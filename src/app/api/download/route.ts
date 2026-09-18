@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { spawn } from "child_process";
+import { getYtdlpBaseArgs, spawnYtdlp } from "@/lib/ytdlp";
+
+// This route streams from the standalone yt-dlp binary, which only works in
+// the Node.js runtime (not Edge).
+export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -44,8 +48,7 @@ export async function GET(request: NextRequest) {
 
   // Build yt-dlp args for streaming to stdout
   const args = [
-    "--no-playlist",
-    "--no-warnings",
+    ...getYtdlpBaseArgs(),
     "-f", formatStr,
     "--merge-output-format", format === "mp3" ? "m4a" : "mp4",
     "-o", "-",  // output to stdout
@@ -59,9 +62,7 @@ export async function GET(request: NextRequest) {
   // Create a ReadableStream from the yt-dlp process stdout
   const stream = new ReadableStream({
     start(controller) {
-      const proc = spawn("yt-dlp", args, {
-        stdio: ["ignore", "pipe", "pipe"],
-      });
+      const proc = spawnYtdlp(args);
 
       proc.stdout.on("data", (chunk: Buffer) => {
         controller.enqueue(new Uint8Array(chunk));
