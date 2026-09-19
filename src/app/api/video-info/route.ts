@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { execFile } from "child_process";
-import { promisify } from "util";
+import { getYtdlpBaseArgs, runYtdlp } from "@/lib/ytdlp";
 
-const execFileAsync = promisify(execFile);
+// This route spawns the standalone yt-dlp binary, which only works in the
+// Node.js runtime (not Edge).
+export const runtime = "nodejs";
 
 export interface VideoFormat {
   formatId: string;
@@ -27,12 +28,11 @@ export async function GET(request: NextRequest) {
   const url = `https://www.youtube.com/watch?v=${videoId}`;
 
   try {
-    const { stdout } = await execFileAsync("yt-dlp", [
+    const { stdout } = await runYtdlp([
+      ...getYtdlpBaseArgs(),
       "--dump-json",
-      "--no-playlist",
-      "--no-warnings",
       url,
-    ], { maxBuffer: 10 * 1024 * 1024 });
+    ]);
 
     const info = JSON.parse(stdout);
 
